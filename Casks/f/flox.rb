@@ -19,6 +19,29 @@ cask "flox" do
 
   pkg "flox-#{version}.#{arch}-darwin.pkg"
 
+  # Refuse to install over an existing Nix installation that Flox does not manage.
+  preflight_steps do
+    if_path_exists "/nix/var/nix/db/db.sqlite" do
+      unless_path_exists "/etc/flox-version" do
+        unless_path_exists "/etc/flox-version.update" do
+          run "/bin/sh", args: ["-c", <<~EOS]
+            cat >&2 <<'MSG'
+            An existing Nix installation was found at /nix.
+
+            Installing Flox over that installation will replace the Nix daemon
+            and remove Nix from the default system profile. Installation via
+            Homebrew does not support this.
+
+            To install Flox on a machine with an existing Nix installation, see
+            https://flox.dev/docs/install-flox
+            MSG
+            exit 1
+          EOS
+        end
+      end
+    end
+  end
+
   uninstall launchctl: [
               "org.nixos.darwin-store",
               "org.nixos.nix-daemon",
